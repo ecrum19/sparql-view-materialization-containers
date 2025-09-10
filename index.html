@@ -8,27 +8,16 @@
       class="remove"
       defer
     ></script>
-    <style>
-      pre {
-        overflow-x: auto;
-      }
-      code,
-      pre {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
-          "Liberation Mono", monospace;
-      }
-    </style>
+    <script src="./common/local-biblio.js" class="remove"></script>
     <script class="remove">
       // All config options at https://respec.org/docs/
       var respecConfig = {
         specStatus: "unofficial",
         editors: [
-          {
-            name: "Elias D. Crum",
-            company: "Ghent University - imec / VITO NV / FWO",
-          },
+          { name: "Elias Crum", w3cid: "" },
+          { name: "Ruben Taelman", w3cid: "84199" },
         ],
-        shortName: "sparql-query-cache",
+        shortName: "sparql-view-materialization-containers",
         xref: "web-platform",
         canonicalURI: "_ORCHESTRATOR_CURRENT_BUILD_FULL_LINK_",
         previousURI: "_ORCHESTRATOR_PREVIOUS_BUILD_FULL_LINK_",
@@ -41,35 +30,19 @@
             id: "knows-logo",
           },
         ],
-        localBiblio: {
-          SPARQL11: {
-            title: "SPARQL 1.1 Query Language",
-            href: "https://www.w3.org/TR/sparql11-query/",
-            publisher: "W3C",
-          },
-          SPARQLSD: {
-            title: "SPARQL 1.1 Service Description",
-            href: "https://www.w3.org/TR/sparql11-service-description/",
-            publisher: "W3C",
-          },
-          LDP: {
-            title: "Linked Data Platform 1.0",
-            href: "https://www.w3.org/TR/ldp/",
-            publisher: "W3C",
-          },
-          SHACL: {
-            title: "Shapes Constraint Language (SHACL)",
-            href: "https://www.w3.org/TR/shacl/",
-            publisher: "W3C",
-          },
-          RDF11: {
-            title: "RDF 1.1 Concepts and Abstract Syntax",
-            href: "https://www.w3.org/TR/rdf11-concepts/",
-            publisher: "W3C",
-          },
-        },
+        localBiblio: localBibliography,
       };
     </script>
+    <style>
+      pre {
+        overflow-x: auto;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+          "Liberation Mono", monospace;
+      }
+    </style>
   </head>
   <body>
     <section id="abstract">
