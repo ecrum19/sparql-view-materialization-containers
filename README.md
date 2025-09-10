@@ -1,35 +1,14 @@
-# ReSpec template
+# SPARQL View Materialization Containers Specification
+The shape index specification repository.
+An online version is available at [this hypermedia link](https://ecrum19.github.io/sparql-view-materialization-containers/).
+The specification is written in "pure" HTML, Javascript, and CSS, so it does not require building. The `./index.html` contains all the documentation.
+Issues about the website or proposition of improvement can be made via the [github issues](https://github.com/ecrum19/sparql-view-materialization-containers/issues).
 
-This is a template for creating a spec using [ReSpec](https://respec.org/)
-together with a config to build and publish the spec by using the KNoWS Spec Platform.
+## Abstract
 
-## Create repo
-
-You have to create a new repo based on this repo.
-You can do this via a fork or 
-by manually copying the files in this repo.
-
-## Install ReSpec
-
-Install ReSpec via
-
-```shell
-npm i
-```
-
-## Edit spec
-
-You edit spec by updating the file `index.html`.
-
-## Build
-
-You build the spec via
-
-```shell
-npm run build
-```
-
-You find the result in the folder `dist`.
+This specification defines a lightweight, file-system–backed cache for SPARQL queries and results, exposed as a Linked Data Platform (LDP) Container. 
+It standardizes resource layout, metadata, and HTTP interactions so that clients and tools can discover cached SPARQL queries, their canonical algebra, provenance, and serialized results in a consistent way.
+...
 
 ## Publish
 
