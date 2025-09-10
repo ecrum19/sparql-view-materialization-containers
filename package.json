@@ -1,4 +1,6 @@
 {
+  "repo": "https://github.com/ecrum19/sparql-query-cache",
+  "id": "sparql-query-cache",
   "dependencies": {
     "cpy-cli": "^5.0.0",
     "respec": "^35.2.2",
@@ -6,6 +8,16 @@
   },
   "scripts": {
     "prebuild": "rimraf -rf dist && mkdir dist && cpy logo.png dist",
-    "build": "respec --src index.html --out dist/index.html"
-  }
+    "build": "respec --src index.html --out dist/index.html",
+    "deploy": "gh-pages -d dist"
+  },
+  "publications": [
+    {
+      "name": "All commits",
+      "id": "all-commits",
+      "path": "all",
+      "comment": "Publish all commits on the main branch.",
+      "type": "all-commits"
+    }
+  ]
 }
