@@ -1,7 +1,7 @@
 {
-  "repo": "https://github.com/example/bikeshed-template",
-  "name": "Bikeshed Template",
-  "id": "bikeshed-template",
+  "repo": "https://github.com/ecrum19/sparql-query-cache",
+  "name": "SPARQL Query Cache Spec",
+  "id": "sparql-query-cache",
   "scripts": {
     "install": "npm i",
     "build": "npm run build"

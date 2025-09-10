@@ -1,86 +1,391 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>ReSpec template</title>
-  <script
+  <head>
+    <meta charset="utf-8" />
+    <title>SPARQL Query Cache</title>
+    <script
       src="https://www.w3.org/Tools/respec/respec-w3c"
       class="remove"
       defer
-  ></script>
-  <script class="remove">
-    // All config options at https://respec.org/docs/
-    var respecConfig = {
-      specStatus: "unofficial",
-      editors: [{ name: "Pieter Heyvaert", company: "Ghent University - imec", companyURL: "http://idlab.ugent.be/" }],
-      shortName: "respec-template",
-      xref: "web-platform",
-      canonicalURI: "_ORCHESTRATOR_CURRENT_BUILD_FULL_LINK_",
-      previousURI: "_ORCHESTRATOR_PREVIOUS_BUILD_FULL_LINK_",
-      logos: [
-        {
-          src: "logo.png",
-          url: "https://knows.idlab.ugent.be/",
-          alt: "KNoWS",
-          height: 48,
-          id: "knows-logo"
-        }
-      ]
-    };
-  </script>
-</head>
-<body>
-<section id="abstract">
-  <p>This is required.</p>
-</section>
-<section id="sotd">
-  <p>This is required.</p>
-</section>
-<section class="informative">
-  <h2>Introduction</h2>
-  <p>Some informative introductory text.</p>
-  <aside class="note" title="A useful note">
-    <p>I'm a note!</p>
-  </aside>
-</section>
-<section>
-  <h2>A section</h2>
-  <aside class="example">
-    <p>This is an example.</p>
-    <pre class="js">
+    ></script>
+    <style>
+      pre {
+        overflow-x: auto;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+          "Liberation Mono", monospace;
+      }
+    </style>
+    <script class="remove">
+      // All config options at https://respec.org/docs/
+      var respecConfig = {
+        specStatus: "unofficial",
+        editors: [
+          {
+            name: "Elias D. Crum",
+            company: "Ghent University - imec / VITO NV / FWO",
+          },
+        ],
+        shortName: "sparql-query-cache",
+        xref: "web-platform",
+        canonicalURI: "_ORCHESTRATOR_CURRENT_BUILD_FULL_LINK_",
+        previousURI: "_ORCHESTRATOR_PREVIOUS_BUILD_FULL_LINK_",
+        logos: [
+          {
+            src: "logo.png",
+            url: "https://knows.idlab.ugent.be/",
+            alt: "KNoWS",
+            height: 48,
+            id: "knows-logo",
+          },
+        ],
+        localBiblio: {
+          SPARQL11: {
+            title: "SPARQL 1.1 Query Language",
+            href: "https://www.w3.org/TR/sparql11-query/",
+            publisher: "W3C",
+          },
+          SPARQLSD: {
+            title: "SPARQL 1.1 Service Description",
+            href: "https://www.w3.org/TR/sparql11-service-description/",
+            publisher: "W3C",
+          },
+          LDP: {
+            title: "Linked Data Platform 1.0",
+            href: "https://www.w3.org/TR/ldp/",
+            publisher: "W3C",
+          },
+          SHACL: {
+            title: "Shapes Constraint Language (SHACL)",
+            href: "https://www.w3.org/TR/shacl/",
+            publisher: "W3C",
+          },
+          RDF11: {
+            title: "RDF 1.1 Concepts and Abstract Syntax",
+            href: "https://www.w3.org/TR/rdf11-concepts/",
+            publisher: "W3C",
+          },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <section id="abstract">
+      <p>
+        This specification defines a lightweight, file-system–backed cache for
+        SPARQL queries and results, exposed as a
+        <a data-cite="LDP">Linked Data Platform (LDP) Container</a>. It
+        standardizes resource layout, metadata, and HTTP interactions so that
+        clients and tools can discover cached SPARQL queries, their canonical
+        algebra, provenance, and serialized results in a consistent way.
+      </p>
+    </section>
+
+    <section id="sotd">
+      <p>
+        This is an Editor’s Draft intended for implementation at VITO and
+        compatible environments. The document currently includes placeholders
+        and guidance notes marked as <span class="todo">TODO</span> for content
+        the editor should complete.
+      </p>
+    </section>
+
+    <section class="informative">
+      <h2>Introduction</h2>
+      <p>
+        The <em>SPARQL Query Cache</em> (SQC) is a conventional layout for
+        representing cached SPARQL queries and their results as HTTP resources
+        inside an <code>ldp:Container</code>. Each cached query is addressed by
+        a stable, opaque identifier derived from a cache key function over the
+        query text, dataset/endpoint selection, and selected request headers.
+        The cache also stores a canonical SPARQL algebra form and a serialized
+        result set for deterministic reuse.
+      </p>
+      <aside class="note" title="A useful note">
+        <p>I'm a note!</p>
+      </aside>
+    </section>
+
+    <section>
+      <h2>Terminology</h2>
+      <aside class="example">
+        <dl>
+          <dt>Cache Root</dt>
+          <dd>
+            An HTTP-accessible folder-like resource that is an
+            <code>ldp:Container</code>, referred to as <code>querycache/</code>.
+          </dd>
+          <dt>Cache Entry</dt>
+          <dd>
+            A set of resources representing one logical query execution,
+            identified by an opaque token (e.g., <code>xEz4d3</code>).
+          </dd>
+          <dt>Canonical Algebra</dt>
+          <dd>
+            The normalized SPARQL algebra for a query, stored for cache key
+            stability and testing.
+          </dd>
+        </dl>
+        <pre class="js">
         // Automatic syntax highlighting
         function someJavaScript(){}
         </pre>
-  </aside>
-  <section>
-    <h3>I'm a sub-section</h3>
-    <p class="issue" data-number="121">
-      <!-- Issue can automatically be populated from GitHub -->
-    </p>
-  </section>
-</section>
-<section data-dfn-for="Foo">
-  <h2>Start your spec!</h2>
-  <pre class="idl">
+      </aside>
+      <section>
+        <h3>I'm a sub-section</h3>
+        <p class="issue" data-number="121">
+          <!-- Issue can automatically be populated from GitHub -->
+        </p>
+      </section>
+    </section>
+
+    <section id="data-model">
+      <h2>RDF data model</h2>
+      <p>
+        The index file <code>queries.ttl</code> is a Turtle graph that describes
+        each cache entry using terms from
+        <a data-cite="SPARQL11">SPARQL 1.1</a>, <a data-cite="SHACL">SHACL</a>,
+        and <a data-cite="SPARQLSD">Service Description</a>. The following is a
+        real-world example:
+      </p>
+      <pre
+        class="example"
+        title="Sample cache entry in queries.ttl"
+      ><code class="language-turtle">
+        &lt;#xEz4d3&gt; a &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#QueryForm&gt;,
+        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#QuerySelect&gt;,
+        &lt;http://www.w3.org/ns/shacl#SPARQLExecutable&gt; ;
+        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#query&gt; &lt;http://localhost:3000/test/querycache/xEz4d3.rq&gt; ;
+        &lt;http://www.w3.org/ns/shacl#select&gt; "SELECT DISTINCT ?p WHERE {\n\t?s ?p ?o .\n}LIMIT 10" ;
+        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result&gt; &lt;http://localhost:3000/test/querycache/xEz4d3.json&gt; ;
+        &lt;http://www.w3.org/ns/sparql-service-description#endpoint&gt; &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt; ;
+        &lt;http://purl.org/dc/terms/created&gt; "2025-04-25T09:30:54.647Z"^^&lt;http://www.w3.org/2001/XMLSchema#dateTime&gt; .
+
+
+        &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt;
+        &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#first&gt; &lt;https://sparql.rhea-db.org/sparql/&gt; ;
+        &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#rest&gt; &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#nil&gt; .
+      </code></pre>
+      <div class="note">
+        <p class="todo">
+          TODO: Define terms/prefixes for readability and consider SHACL shapes
+          for validation of <code>queries.ttl</code>.
+        </p>
+      </div>
+    </section>
+
+    <section id="resource-layout">
+      <h2>Resource layout and media types</h2>
+      <p>
+        Within the <code>ldp:Container</code> <code>querycache/</code>,
+        resources follow this layout:
+      </p>
+      <ul>
+        <li>
+          <code>queries.ttl</code> — Turtle, the authoritative index of cache
+          entries.
+        </li>
+        <li>
+          <code>{id}.rq</code> — SPARQL algebra serialization.
+          <span class="todo"
+            >TODO: Specify exact syntax (SPARQL 1.1 algebra S-expression? ARQ
+            algebra? N-Triples of algebra?)</span
+          >
+        </li>
+        <li>
+          <code>{id}.json</code> — Query results.
+          <span class="todo"
+            >TODO: Specify result format (SPARQL Results JSON per
+            <code>application/sparql-results+json</code> vs custom JSON).</span
+          >
+        </li>
+      </ul>
+      <p class="todo">
+        TODO: Define canonical content types, charsets, and content negotiation
+        expectations.
+      </p>
+    </section>
+
+    <section id="cache-key">
+      <h2>Cache key derivation</h2>
+      <p>
+        Each entry token <code>{id}</code> is derived from a deterministic
+        function over at least:
+      </p>
+      <ul>
+        <li>Normalized query text (or canonical algebra),</li>
+        <li>Endpoint selection (may be a list),</li>
+        <li>
+          Relevant request headers (e.g., <code>Accept</code>,
+          <code>Accept-Language</code>),
+        </li>
+        <li>Optional dataset description (default graph / named graphs),</li>
+        <li>Optional version pinning (dataset snapshot identifier).</li>
+      </ul>
+      <p class="todo">
+        TODO: Specify the exact normalization procedure and hashing algorithm
+        (e.g., SHA-256 base32, truncated to N chars).
+      </p>
+    </section>
+
+    <section id="operations">
+      <h2>HTTP operations</h2>
+      <p>
+        Implementations SHOULD expose <code>querycache/</code> as an
+        <code>ldp:BasicContainer</code> supporting at least <code>GET</code> on
+        all resources. Implementations MAY support authenticated
+        <code>POST</code>/<code>PUT</code> to add new cache entries or update
+        <code>queries.ttl</code>.
+      </p>
+      <p class="todo">
+        TODO: Define creation workflow (client-driven vs server-driven),
+        idempotency expectations, and constraints.
+      </p>
+
+      <h3>Retrieval</h3>
+      <ol>
+        <li>Client GETs <code>queries.ttl</code>.</li>
+        <li>
+          Client selects an entry node and follows links to
+          <code>{id}.rq</code> and <code>{id}.json</code>.
+        </li>
+        <li>
+          Client validates freshness/acceptability (see
+          <a href="#freshness"></a>).
+        </li>
+      </ol>
+
+      <h3>Insertion</h3>
+      <p class="todo">
+        TODO: Specify a concrete insertion protocol (e.g., POST a small Turtle
+        fragment to append to <code>queries.ttl</code> and upload artifacts).
+      </p>
+    </section>
+
+    <section id="freshness">
+      <h2>Freshness, revalidation, and invalidation</h2>
+      <p>
+        Cache entries MUST include a creation timestamp. Implementations SHOULD
+        provide one or more of the following mechanisms:
+      </p>
+      <ul>
+        <li>Time‑to‑live per endpoint or per query class,</li>
+        <li>
+          ETag/Last‑Modified on <code>{id}.json</code> to enable conditional
+          GET,
+        </li>
+        <li>
+          Revocation via a tombstone record in <code>queries.ttl</code> or
+          removal of the entry node,
+        </li>
+        <li>Endpoint dataset version pinning and mismatch detection.</li>
+      </ul>
+      <p class="todo">
+        TODO: Choose a normative freshness model and define the semantics of
+        revalidation.
+      </p>
+    </section>
+
+    <section id="conformance">
+      <h2>Conformance</h2>
+      <p>This specification defines two classes of products:</p>
+      <ul>
+        <li>
+          <strong>Producers</strong>: systems that populate and maintain an SQC
+          container.
+        </li>
+        <li>
+          <strong>Consumers</strong>: systems that read and use SQC entries.
+        </li>
+      </ul>
+      <p class="todo">
+        TODO: Provide machine‑readable SHACL shapes and minimal MUST/SHOULD
+        requirements for each class.
+      </p>
+    </section>
+
+    <section id="security">
+      <h2>Security and privacy considerations</h2>
+      <ul>
+        <li>
+          Result caching can leak query intent; consider access control on
+          <code>queries.ttl</code> and per‑entry artifacts.
+        </li>
+        <li>
+          Endpoint URIs and dataset identifiers may reveal internal topology.
+        </li>
+        <li>
+          Integrity of <code>.rq</code> and <code>.json</code> SHOULD be
+          verifiable (e.g., digests in the index graph).
+        </li>
+        <li>
+          Beware of cache poisoning if clients can write unvalidated entries.
+        </li>
+      </ul>
+      <p class="todo">
+        TODO: Specify authentication/authorization model if applicable.
+      </p>
+    </section>
+
+    <section id="i18n">
+      <h2>Internationalization considerations</h2>
+      <p class="todo">
+        TODO: Define handling for <code>Accept-Language</code> in cache keys and
+        result serialization.
+      </p>
+    </section>
+
+    <section id="extensibility">
+      <h2>Extensibility</h2>
+      <p>
+        The index graph MAY include additional metadata such as provenance
+        (<code>dct:source</code>), execution timing, result counts, or dataset
+        snapshots. Unknown properties MUST be ignored by consumers.
+      </p>
+      <p class="todo">
+        TODO: Enumerate recommended extension predicates and registry policy (if
+        any).
+      </p>
+    </section>
+
+    <section>
+      <p>
+        <strong>Interpretation:</strong> Each subject
+        <code>#&lt;id&gt;</code> is a cache entry that is a SPARQL
+        <code>SELECT</code> query and a <code>sh:SPARQLExecutable</code>.
+        Properties link to the canonical algebra (<code>.rq</code>) and the
+        serialized results (<code>.json</code>), the endpoint (as a list head to
+        allow multiple endpoints), and a creation timestamp.
+      </p>
+    </section>
+
+
+    <section data-dfn-for="Foo">
+      <h2>Start your spec!</h2>
+      <pre class="idl">
         [Exposed=Window]
         interface Foo {
         attribute DOMString bar;
         undefined doTheFoo();
         };
       </pre>
-  <p>The <dfn>Foo</dfn> interface represents a {{Foo}}.</p>
-  <p>
-    The <dfn>doTheFoo()</dfn> method does the foo. Call it by running
-    {{Foo/doTheFoo()}}.
-  </p>
-  <ol class="algorithm">
-    <li>A |variable:DOMString| can be declared like this.</li>
-  </ol>
-</section>
-<section id="conformance">
-  <p>
-    This is required for specifications that contain normative material.
-  </p>
-</section>
-</body>
+      <p>The <dfn>Foo</dfn> interface represents a {{Foo}}.</p>
+      <p>
+        The <dfn>doTheFoo()</dfn> method does the foo. Call it by running
+        {{Foo/doTheFoo()}}.
+      </p>
+      <ol class="algorithm">
+        <li>A |variable:DOMString| can be declared like this.</li>
+      </ol>
+    </section>
+    <section id="conformance">
+      <p>
+        This is required for specifications that contain normative material.
+      </p>
+    </section>
+
+    <section id="references"></section>
+  </body>
 </html>
