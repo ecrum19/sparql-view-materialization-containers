@@ -38,5 +38,4 @@ var localBibliography = {
     href: "https://www.w3.org/TR/rdf11-concepts/",
     publisher: "W3C",
   },
-  
 };

@@ -8,7 +8,7 @@
       class="remove"
       defer
     ></script>
-    <!-- <script src="./common/local-biblio.js" class="remove"></script> -->
+    <script src="./local-biblio.js" class="remove"></script>
     <script class="remove">
       // All config options at https://respec.org/docs/
       var respecConfig = {
@@ -30,7 +30,7 @@
             id: "knows-logo",
           },
         ],
-        // localBiblio: localBibliography,
+        localBiblio: localBibliography,
       };
     </script>
     <style>
@@ -42,32 +42,62 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
           "Liberation Mono", monospace;
       }
+      pre.http-example { background: #0b1021; color: #d6e7ff; padding: 1rem; border-radius: .5rem; overflow-x: auto; }
+      code.fname { background: #eef; padding: .1rem .35rem; border-radius: .35rem; }
+      .note-hint { font-style: italic; opacity: .85; }
     </style>
   </head>
   <body>
     <section id="abstract">
       <p>
-        This specification defines a lightweight, file-system–backed cache for
-        SPARQL queries and results, exposed as a
-        <a data-cite="LDP">Linked Data Platform (LDP) Container</a>. It
-        standardizes resource layout, metadata, and HTTP interactions so that
-        clients and tools can discover cached SPARQL queries, their canonical
-        algebra, provenance, and serialized results in a consistent way.
+        The execution of SPARQL queries, especially over large, federated sources, can be challenging for a number of reasons,
+        including performance, availability, and reproducibility.
+        To encourage greater reproducibility, sharability, and performance of these queries, a result caching approach offers a pragmatic solution.
+
+        This specification defines <em>SPARQL Query View Materialization Containers</em> (QVMC): 
+        HTTP resources that implement the Linked Data Platform (LDP) Container model to store SPARQL query definitions and their corresponding materialized result sets. 
+        A QVMC is an <code>ldp:BasicContainer</code> whose members include SPARQL query source files 
+        (<code class="fname">*.rq</code>) and SPARQL Results documents (<code class="fname">*.srj</code> for JSON and <code class="fname">*.srx</code> for XML). 
+        An RDF index resource named <code class="fname">queries.ttl</code> describes the contained views and how they were generated.
+        These guidelines enable clients and tools to reliably leverage cached SPARQL queries, their canonical
+        algebra, provenance, and serialized results, in a way that promotes interoperability and reuse.
       </p>
     </section>
 
     <section id="sotd">
       <p>
-        This is an Editor’s Draft intended for implementation at VITO and
-        compatible environments. The document currently includes placeholders
-        and guidance notes marked as <span class="todo">TODO</span> for content
-        the editor should complete.
+        <ul>
+          <li>This is an unofficial proposal.</li>
+          <li>This is a draft document and may be updated, replaced, or obsoleted by other documents at any time. It is inappropriate to cite this document as other than a work in progress.</li>
+        </ul>
       </p>
     </section>
 
     <section class="informative">
       <h2>Introduction</h2>
       <p>
+        This document discusses the canonical view materialization of SPARQL queries and results. 
+        This document is primarily intended for the following audiences:
+        <ul>
+          <li>Developers of SPARQL clients and tools that wish to leverage standardized materialized queries and results.</li>
+          <li>Developers of SPARQL endpoints and services that wish to implement a standardized caching mechanism.</li>
+          <li>Researchers and practitioners interested in improving the performance, availability, and reproducibility of SPARQL queries.</li>
+        </ul>
+      </p>
+      <p>
+        The goals of this specification are to:
+        <ul>
+          <li>Define a predictable container layout and naming scheme.</li>
+          <li>Specify file formats and media types for query sources and results.</li>
+          <li>Define the structure of <code>queries.ttl</code> — an RDF index that inventories the views in a container and
+          captures provenance.</li>
+          <li>Clarify client and server expectations for creating, updating, and retrieving members.</li>
+        </ul>
+      </p>
+
+      <p>
+        To understand the basics in this note ... (knowledge requirements)
+        
         The <em>SPARQL Query Cache</em> (SQC) is a conventional layout for
         representing cached SPARQL queries and their results as HTTP resources
         inside an <code>ldp:Container</code>. Each cached query is addressed by
@@ -76,287 +106,328 @@
         The cache also stores a canonical SPARQL algebra form and a serialized
         result set for deterministic reuse.
       </p>
-      <aside class="note" title="A useful note">
-        <p>I'm a note!</p>
-      </aside>
     </section>
 
-    <section>
+    <section id="terminology">
       <h2>Terminology</h2>
-      <aside class="example">
-        <dl>
-          <dt>Cache Root</dt>
-          <dd>
-            An HTTP-accessible folder-like resource that is an
-            <code>ldp:Container</code>, referred to as <code>querycache/</code>.
-          </dd>
-          <dt>Cache Entry</dt>
-          <dd>
-            A set of resources representing one logical query execution,
-            identified by an opaque token (e.g., <code>xEz4d3</code>).
-          </dd>
-          <dt>Canonical Algebra</dt>
-          <dd>
-            The normalized SPARQL algebra for a query, stored for cache key
-            stability and testing.
-          </dd>
-        </dl>
-        <pre class="js">
-        // Automatic syntax highlighting
-        function someJavaScript(){}
-        </pre>
-      </aside>
-      <section>
-        <h3>I'm a sub-section</h3>
-        <p class="issue" data-number="121">
-          <!-- Issue can automatically be populated from GitHub -->
-        </p>
-      </section>
-    </section>
-
-    <section id="data-model">
-      <h2>RDF data model</h2>
-      <p>
-        The index file <code>queries.ttl</code> is a Turtle graph that describes
-        each cache entry using terms from
-        <a data-cite="SPARQL11">SPARQL 1.1</a>, <a data-cite="SHACL">SHACL</a>,
-        and <a data-cite="SPARQLSD">Service Description</a>. The following is a
-        real-world example:
-      </p>
-      <pre
-        class="example"
-        title="Sample cache entry in queries.ttl"
-      ><code class="language-turtle">
-        &lt;#xEz4d3&gt; a &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#QueryForm&gt;,
-        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#QuerySelect&gt;,
-        &lt;http://www.w3.org/ns/shacl#SPARQLExecutable&gt; ;
-        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#query&gt; &lt;http://localhost:3000/test/querycache/xEz4d3.rq&gt; ;
-        &lt;http://www.w3.org/ns/shacl#select&gt; "SELECT DISTINCT ?p WHERE {\n\t?s ?p ?o .\n}LIMIT 10" ;
-        &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result&gt; &lt;http://localhost:3000/test/querycache/xEz4d3.json&gt; ;
-        &lt;http://www.w3.org/ns/sparql-service-description#endpoint&gt; &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt; ;
-        &lt;http://purl.org/dc/terms/created&gt; "2025-04-25T09:30:54.647Z"^^&lt;http://www.w3.org/2001/XMLSchema#dateTime&gt; .
-
-
-        &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt;
-        &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#first&gt; &lt;https://sparql.rhea-db.org/sparql/&gt; ;
-        &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#rest&gt; &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#nil&gt; .
-      </code></pre>
-      <div class="note">
-        <p class="todo">
-          TODO: Define terms/prefixes for readability and consider SHACL shapes
-          for validation of <code>queries.ttl</code>.
-        </p>
-      </div>
-    </section>
-
-    <section id="resource-layout">
-      <h2>Resource layout and media types</h2>
-      <p>
-        Within the <code>ldp:Container</code> <code>querycache/</code>,
-        resources follow this layout:
-      </p>
-      <ul>
-        <li>
-          <code>queries.ttl</code> — Turtle, the authoritative index of cache
-          entries.
-        </li>
-        <li>
-          <code>{id}.rq</code> — SPARQL algebra serialization.
-          <span class="todo"
-            >TODO: Specify exact syntax (SPARQL 1.1 algebra S-expression? ARQ
-            algebra? N-Triples of algebra?)</span
-          >
-        </li>
-        <li>
-          <code>{id}.json</code> — Query results.
-          <span class="todo"
-            >TODO: Specify result format (SPARQL Results JSON per
-            <code>application/sparql-results+json</code> vs custom JSON).</span
-          >
-        </li>
-      </ul>
-      <p class="todo">
-        TODO: Define canonical content types, charsets, and content negotiation
-        expectations.
-      </p>
-    </section>
-
-    <section id="cache-key">
-      <h2>Cache key derivation</h2>
-      <p>
-        Each entry token <code>{id}</code> is derived from a deterministic
-        function over at least:
-      </p>
-      <ul>
-        <li>Normalized query text (or canonical algebra),</li>
-        <li>Endpoint selection (may be a list),</li>
-        <li>
-          Relevant request headers (e.g., <code>Accept</code>,
-          <code>Accept-Language</code>),
-        </li>
-        <li>Optional dataset description (default graph / named graphs),</li>
-        <li>Optional version pinning (dataset snapshot identifier).</li>
-      </ul>
-      <p class="todo">
-        TODO: Specify the exact normalization procedure and hashing algorithm
-        (e.g., SHA-256 base32, truncated to N chars).
-      </p>
-    </section>
-
-    <section id="operations">
-      <h2>HTTP operations</h2>
-      <p>
-        Implementations SHOULD expose <code>querycache/</code> as an
-        <code>ldp:BasicContainer</code> supporting at least <code>GET</code> on
-        all resources. Implementations MAY support authenticated
-        <code>POST</code>/<code>PUT</code> to add new cache entries or update
-        <code>queries.ttl</code>.
-      </p>
-      <p class="todo">
-        TODO: Define creation workflow (client-driven vs server-driven),
-        idempotency expectations, and constraints.
-      </p>
-
-      <h3>Retrieval</h3>
-      <ol>
-        <li>Client GETs <code>queries.ttl</code>.</li>
-        <li>
-          Client selects an entry node and follows links to
-          <code>{id}.rq</code> and <code>{id}.json</code>.
-        </li>
-        <li>
-          Client validates freshness/acceptability (see
-          <a href="#freshness"></a>).
-        </li>
-      </ol>
-
-      <h3>Insertion</h3>
-      <p class="todo">
-        TODO: Specify a concrete insertion protocol (e.g., POST a small Turtle
-        fragment to append to <code>queries.ttl</code> and upload artifacts).
-      </p>
-    </section>
-
-    <section id="freshness">
-      <h2>Freshness, revalidation, and invalidation</h2>
-      <p>
-        Cache entries MUST include a creation timestamp. Implementations SHOULD
-        provide one or more of the following mechanisms:
-      </p>
-      <ul>
-        <li>Time‑to‑live per endpoint or per query class,</li>
-        <li>
-          ETag/Last‑Modified on <code>{id}.json</code> to enable conditional
-          GET,
-        </li>
-        <li>
-          Revocation via a tombstone record in <code>queries.ttl</code> or
-          removal of the entry node,
-        </li>
-        <li>Endpoint dataset version pinning and mismatch detection.</li>
-      </ul>
-      <p class="todo">
-        TODO: Choose a normative freshness model and define the semantics of
-        revalidation.
-      </p>
+      <p>Key terms are used as defined in the following specifications: Linked Data Platform (LDP), SPARQL 1.1 Query, SPARQL Results JSON and XML.</p>
+      <dl>
+        <dt>QVMC</dt>
+          <dd>SPARQL Query View Materialization Container (this spec).</dd>
+        <dt>Index</dt>
+          <dd>The RDF document <code class="fname">queries.ttl</code> at the root of a QVMC.</dd>
+      </dl>
+      <p class="note-hint">RFC 2119 keywords (MUST, SHOULD, MAY) indicate conformance requirements.</p>
     </section>
 
     <section id="conformance">
-      <h2>Conformance</h2>
-      <p>This specification defines two classes of products:</p>
+      <p>
+        The following prefixes are used throughout the document.
+      </p>
+      <pre class="query nohighlight">
+        PREFIX rdfs: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; .
+        PREFIX prov: &lt;http://www.w3.org/ns/prov#&gt; .
+        PREFIX dc: &lt;http://purl.org/dc/terms/&gt; .
+        PREFIX sh: &lt;http://www.w3.org/ns/shacl#&gt; .
+        PREFIX tq: &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#&gt; .
+        PREFIX tm: &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#&gt; .
+        PREFIX sd: &lt;http://www.w3.org/ns/sparql-service-description#&gt; .
+        PREFIX se: &lt;https://purl.expasy.org/sparql-examples/ontology#&gt; .
+        PREFIX qvmc: &lt;https://vocab.example/qvmc#&gt; .
+      </pre>
+  </section>
+
+  <section id="container-model">
+    <h2>Container Model</h2>
+    <p>
+      A SPARQL query execution, from the perspective of the user, consists of four distinct componenets.
       <ul>
-        <li>
-          <strong>Producers</strong>: systems that populate and maintain an SQC
-          container.
-        </li>
-        <li>
-          <strong>Consumers</strong>: systems that read and use SQC entries.
-        </li>
+        <li>The SPARQL query algebra (i.e the query itself),</li>
+        <li>The target source(s) to which the query, or subsets of the query, is/are submitted and executed,</li>
+        <li>The serialized result set obtained from executing the query, and</li>
+        <li>The metadata about the query run itself, primarily the date and time of the query.</li>
       </ul>
-      <p class="todo">
-        TODO: Provide machine‑readable SHACL shapes and minimal MUST/SHOULD
-        requirements for each class.
+      This section introduces a materialization approach to record the serialization of each of these components of a SPARQL query execution, which enables the consistent accessing and utilization of these data for users and applications.
+    </p>
+
+    <section id="the-container">
+      <h3>Resource types</h3>
+      <p>
+        A QVMC <em>MUST</em> be an HTTP-accessible <code>ldp:BasicContainer</code> and <em>MUST</em> advertise <code>Link: &lt;http://www.w3.org/ns/ldp#BasicContainer&gt; ; rel="type"</code>
+        in responses to <code>GET</code> on the container URI. 
+        Servers <em>SHOULD</em> also include <code>ldp:contains</code> statements in RDF representations.
       </p>
     </section>
 
-    <section id="security">
-      <h2>Security and privacy considerations</h2>
+    <section id="members">
+      <h3>Members</h3>
+      <p>The members of a QVMC are:</p>
       <ul>
-        <li>
-          Result caching can leak query intent; consider access control on
-          <code>queries.ttl</code> and per‑entry artifacts.
-        </li>
-        <li>
-          Endpoint URIs and dataset identifiers may reveal internal topology.
-        </li>
-        <li>
-          Integrity of <code>.rq</code> and <code>.json</code> SHOULD be
-          verifiable (e.g., digests in the index graph).
-        </li>
-        <li>
-          Beware of cache poisoning if clients can write unvalidated entries.
-        </li>
+        <li>One <strong>index</strong> resource named <code class="fname">queries.ttl</code> (<code>text/turtle</code>).</li>
+        <li>Zero or more <strong>SPARQL query files</strong> with extension <code class="fname">.rq</code> and media type <code>application/sparql-query</code>.</li>
+        <li>Zero or more <strong>SPARQL result files</strong> with extensions <code class="fname">.srj</code> (<code>application/sparql-results+json</code>) or
+        <code class="fname">.srx</code> (<code>application/sparql-results+xml</code>).</li>
       </ul>
-      <p class="todo">
-        TODO: Specify authentication/authorization model if applicable.
-      </p>
+      <p>Additional non-normative artifacts (e.g., CSV extracts) MAY be present but are out of scope.</p>
     </section>
 
-    <section id="i18n">
-      <h2>Internationalization considerations</h2>
-      <p class="todo">
-        TODO: Define handling for <code>Accept-Language</code> in cache keys and
-        result serialization.
-      </p>
+    <section id="general-naming-layout">
+      <h3>Naming and layout</h3>
+      <ul>
+        <li>The index <em>MUST</em> be located at <code class="fname">{container}/queries.ttl</code>.</li>
+        <li>Implementations <em>SHOULD</em> use a stable <code>{hash}</code> token to bind each query entry to its query SPARQL algebra and results files (details below).</li>
+        <li>Query files <em>SHOULD</em> be placed at <code class="fname">{container}/{hash}.rq</code>.</li>
+        <li>Result files <em>SHOULD</em> be placed at <code class="fname">{container}/{hash}.{srj|srx}</code>.</li>
+      </ul>
+      <pre class="http-example" aria-label="Example container layout">
+        GET /views/ HTTP/1.1
+        Accept: text/turtle
+        HTTP/1.1 200 OK
+        Link: &lt;http://www.w3.org/ns/ldp#BasicContainer&gt; ; rel="type"
+        Content-Type: text/turtle; charset=utf-8
+
+        @prefix ldp: &lt;http://www.w3.org/ns/ldp#&gt; .
+        @prefix dc: &lt;http://purl.org/dc/terms/&gt; .
+        @prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+
+        </views/> a ldp:BasicContainer ;
+          dc:title "SPARQL Query Materialization Container" ;
+          ldp:contains &lt;/views/queries.ttl&gt; ,
+            &lt;/views/hash1.rq&gt; ,
+            &lt;/views/hash1.srj&gt; ,
+            # ... more members ...
+          .
+      </pre>
+    </section>
+
+    <section id="file-formats">
+      <h2>File formats</h2>
+
+      <section id="container-index">
+        <h3>Container Index</h3>
+        <p>
+          The container includes an index file, <code>queries.ttl</code>, which is a Turtle graph that describes each stored SPARQL query entry using terms from <a data-cite="SPARQL11">SPARQL 1.1</a>, <a data-cite="SHACL">SHACL</a>, and <a data-cite="SPARQLSD">Service Description</a>.
+        </p>
+
+        <section id="data-model">
+          <h3>Data model</h3>
+          <p>The following classes and properties are used:</p>
+          <ul>
+            <li><code>tq:QueryForm</code> — a materialized view entry.</li>
+            <li><code>dct:title</code>, <code>dct:description</code>, <code>dct:modified</code> — human-readable metadata.</li>
+            <li><code>tq:QuerySelect</code> — the supported SPARQL query operation.</li>
+            <li><code>sh:SPARQLExecutable</code> - designates that this hash contains a link to the <code>.rq</code> file.</li>
+            <li><code>tq:query</code> (IRI) — link to the <code>.rq</code> file.</li>
+            <li><code>sh:select</code> (literal) — the entry's SPARQL query algebra (identical to that in the entry's .rq file).</li>
+            <li><code>tm:result</code> (IRI) — link to the <code>.srj</code> or <code>.srx</code> file.</li>
+            <li><code>sd:endpoint</code> (IRI) — link to the RDF list containing the target sources of the query entry (sources must be valid URIs).</li>
+            <li><code>dct:created</code> (xsd:dateTime) — timestamp of when the query was executed.</li>
+            <li><code>qvmc:status</code> (literal; values: <code>current</code> | <code>stale</code> | <code>failed</code>) — indicates the current state of the query entry results.</li>
+            <li><code>prov:wasGeneratedBy</code> — blank node with provenance information about the query entry.</li>
+          </ul>
+          <p>
+            The index resource itself <em>SHOULD</em> be typed as <code>qvmc:Index</code> and <code>ldp:RDFSource</code> and may carry container-level metadata.
+          </p>
+        </section>
+
+        <section id="index-shape">
+          <h3>Index shape and constraints</h3>
+
+          <p>
+            Each <code>tq:QueryForm</code> entry <em>MUST</em> include at least <code>tq:query</code>, <code>tm:result</code>, <code>sd:endpoint</code>, and <code>dct:created</code>. 
+            The pair <code>(tq:query, tm:result)</code> <em>MUST</em> be unique within the container. 
+            <code>sd:endpoint</code> <em>MUST</em> be a valid RDF list of one or more URIs.
+            <code>dct:created</code> <em>MUST</em> be in xsd:dateTime.
+            <code>qvmc:status</code> <em>MUST</em> be a literal in the range: <code>current</code> | <code>stale</code> | <code>failed</code>.
+            <code>prov:wasGeneratedBy</code> <em>MUST</em> include a <code>prov:Activity</code> with at least <code>prov:used</code> and <code>prov:modified</code>.
+          </p>
+          <p>
+            It is recommended that each <code>tq:QueryForm</code> SPARQL query entry is identified by an opaque, 10-character token 
+            (e.g., <code>#aBc1d2Ef3g</code>) composed of integers (0-9) and both lowercase and uppercase letters (a-z, A-Z).
+            This <strong>hash</strong> is used as a key to refer to a singular stored SPARQL query entry.
+            At a minimum, each <code>tq:QueryForm</code> entry <em>MUST</em> be unique within the <code>queries.ttl</code> file.
+          </p>
+        </section>
+
+      </section>
+
+      <section>
+        <h3>SPARQL query file serialization (<code>.rq</code>)</h3>
+        <p>
+          Each SPARQL query entry includes a serialization of the SPARQL algebra for the query, stored in a file named <code>{hash}.rq</code>. 
+        </p>
+        <ul>
+          <li><em>MUST</em> be named to match the source query entry's <code>{hash}</code>.</li>
+          <li><em>MUST</em> declare media type <code>application/sparql-query</code>.</li>
+        </ul>
+        <pre id="http-example" aria-label="Example .rq">
+          PREFIX : &lt;https://example.org/ontology/&gt;
+          SELECT ?s ?score WHERE { ?s :score ?score } ORDER BY DESC(?score) LIMIT 10
+        </pre>
+      </section>
+
+      <section id="results-serialization">
+        <h3>Results file serialization</h3>
+        <p>
+          Each SPARQL query entry includes a serialization of the results for the query, stored in a file named <code>{hash}.*</code> (where "*" is the descriptive extension of the file-type respresented).
+        </p>
+        <ul>
+          <li><em>MUST</em> be named to match the source query's <code>{hash}</code>.</li>
+          <li><em>MUST</em> use either SPARQL Results JSON (<code>application/sparql-results+json</code>) or SPARQL Results XML (<code>application/sparql-results+xml</code>) serialization formats.</li>
+        </ul>
+      </section>
+
+      <section id="example-queries-ttl">
+        <h3>Example - <code>queries.ttl</code></h3>
+        <pre class="http-example" aria-label="example queries.ttl">
+          @prefix rdfs: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; .
+          @prefix prov: &lt;http://www.w3.org/ns/prov#&gt; .
+          @prefix qvmc: &lt;https://vocab.example/qvmc#&gt; .
+          @prefix dc: &lt;http://purl.org/dc/terms/&gt; .
+          @prefix sh: &lt;http://www.w3.org/ns/shacl#&gt; .
+          @prefix tq: &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-query#&gt; .
+          @prefix tm: &lt;http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#&gt; .
+          @prefix sd: &lt;http://www.w3.org/ns/sparql-service-description#&gt; .
+          @prefix se: &lt;https://purl.expasy.org/sparql-examples/ontology#&gt; .
+          @base &lt;https://data.example.org/example/&gt; .
+
+          &lt;#index&gt; a qvmc:Index ;
+          dc:title "SPARQL Query Materialization Container Example" ;
+          dc:modified "2025-09-25T09:00:00Z"^^xsd:dateTime .
+
+          &lt;#aBc1d2Ef3g&gt; a tq:QueryForm, tq:QuerySelect, sh:SPARQLExecutable ;
+            dc:title "Top 10 by score" ;
+            dc:description "Returns 10 entities with the highest :score." ;
+            tq:query &lt;aBc1d2Ef3g.rq&gt; ;
+            tm:result &lt;aBc1d2Ef3g.srj&gt; ;
+            sh:select "SELECT ?s ?score WHERE { ?s :score ?score } ORDER BY DESC(?score) LIMIT 10" ;
+            sd:endpoint &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt; ;
+            dc:created "2025-09-24T16:12:03Z"^^xsd:dateTime ;
+            qvmc:status "current" ;
+            prov:wasGeneratedBy [
+              a prov:Activity ;
+              prov:used &lt;aBc1d2Ef3g.rq&gt;, &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt; ;
+              prov:modified "2025-09-24T16:12:03Z"^^xsd:dateTime
+            ] .
+
+          &lt;#5926e69f-c619-4029-b516-21affc0598e0&gt; rdfs:first &lt;https://sparql.example.org/sparql/&gt; ;
+            rdfs:rest rdfs:nil .
+        </pre>
+        The order in which RDF triples occur in an RDF dataset convey no meaning.
+      </section>
+
+      <section id="security-privacy">
+        <h2>Security &amp; privacy considerations</h2>
+        <ul>
+          <li>The discussed container and resource structure is designed to be configured with any additional access controls at a user's discretion.</li>
+          <li>Consider cache-control headers for implementations where access controls are used and stored data should not be cached by intermediaries.</li>
+          <li>Endpoints and dataset IRIs in the index may reveal infrastructure; redact if necessary.</li>
+        </ul>
+      </section>
+
+      <section id="http-interactions">
+        <h3>HTTP interactions</h3>
+        <p>
+          <strong>Security and Privacy Note:</strong> If access controls are implemented, the following operations are permitted <em>only if authorization is successful</em>:
+        </p>
+        <ul>
+          <li>Implementations <em>MUST</em> expose the container as an <code>ldp:BasicContainer</code> with <code>GET</code> and <code>POST</code>/<code>PUT</code> access rights on all resources for at least one authorized user.</li>
+          <li>Implementations MAY support authenticated <code>GET</code> and <code>POST</code>/<code>PUT</code> methods to other authenticated users and/or the public.</li>
+        </ul>
+      </section>
+
+      <section id="updating-the-index">
+        <h3>Updating the index</h3>
+        <p>
+          Implementations <em>MUST</em> update <code>queries.ttl</code> atomically when new members are added, deleted, or modified. 
+          The following describes the requirements for each action:
+        </p>
+        <ul>
+          <li><strong>Add:</strong> 
+            When a new query entry is added, create a new <code>tq:QueryForm</code> node with a new unique subject IRI <code>&lt;#${name}&gt;</code>. 
+            Both results and query serialization files <em>SHOULD</em> be named <code>&lt;#${name}.rq&gt;</code> and <code>&lt;#${name}.*&gt;</code> respectively after the <code>&lt;#${name}&gt;</code> of the <code>tq:QueryForm</code> node. 
+            Set <code>sd:endpoint</code> to an RDF list of one or more source URIs that the query targets. Set <code>dc:created</code> to the creation timestamp.</li>
+            ...
+
+          <li><strong>Modify:</strong> 
+            For an existing query entry, if the dataset changes or a new execution of the same SPARQL query over the same sources gives different results, update the <code>qvmc:status</code> of the relevant <code>tq:QueryForm</code> node to <code>stale</code>.
+            <em>IMPORTANT</em> if the results of the query change, users <em>SHOULD</em> create a new query entry instead of modifying the existing one to preserve provenance.
+            In this case, the pre-existing entry's <code>qvmc:status</code> <em>MUST</em> be set to <code>stale</code> and the triple <code>qvmc:linkedQuery</code> <code>&lt;#${updated-entry-name}&gt;</code> <em>MUST</em> be added.
+            Whenever a field within an entry is updated, users <em>MUST</em> update <code>prov:wasGeneratedBy</code> with a new timestamp via <code>dc:modified</code>.</li>
+
+          <li><strong>Delete:</strong>
+            When a query entry is deleted, remove the corresponding <code>tq:QueryForm</code> node and all references to its associated files (<code>.rq</code>, <code>.srj</code>, <code>.srx</code>) from <code>queries.ttl</code>. Optionally, remove the files themselves from the container.</li>
+
+        </ul>
+        <pre class="http-example" aria-label="PATCH example (sparql-update)">
+          PATCH /views/queries.ttl HTTP/1.1
+          Content-Type: application/sparql-update
+
+          DELETE { &lt;#aBc1d2Ef3g&gt; dct:modified ?t ; qvmc:status ?s }
+          INSERT { &lt;#aBc1d2Ef3g&gt; dct:modified "2025-09-25T10:01:22Z"^^xsd:dateTime ; qvmc:status "current" }
+          WHERE { OPTIONAL { &lt;#aBc1d2Ef3g&gt; dct:modified ?t ; qvmc:status ?s } }
+        </pre>
+      </section>
+
+      <!-- <section>
+        <h3>Validation (SHACL)</h3>
+        <p>Optional SHACL shapes can validate the index. An example is provided:</p>
+        <pre class="http-example" aria-label="SHACL for qvmc:View">
+          @prefix sh: <http://www.w3.org/ns/shacl#> .
+          @prefix qvmc: <https://vocab.example/qvmc#> .
+          @prefix dc: <http://purl.org/dc/terms/> .
+
+
+          qvmc:ViewShape a sh:NodeShape ;
+          sh:targetClass qvmc:View ;
+          sh:property [ sh:path qvmc:query ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+          sh:property [ sh:path qvmc:result ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+          sh:property [ sh:path dc:modified ; sh:minCount 1 ] .
+        </pre>
+      </section> -->
     </section>
 
     <section id="extensibility">
-      <h2>Extensibility</h2>
+        <h2>Extensibility</h2>
+        <p>
+          The index graph MAY include additional metadata such as provenance
+          (<code>dct:source</code>), execution timing, result counts, or dataset
+          snapshots. Unknown properties MUST be ignored by consumers.
+        </p>
+        <p>
+          <!-- TODO: Enumerate recommended extension predicates and registry policy -->
+        </p>
+    </section>
+
+    <section>
+      <h2>Conformance</h2>
       <p>
-        The index graph MAY include additional metadata such as provenance
-        (<code>dct:source</code>), execution timing, result counts, or dataset
-        snapshots. Unknown properties MUST be ignored by consumers.
+        A <em>QVMC Server</em> conforms to this specification if it exposes a container satisfying the requirements in
+        <a href="#container-model">Container model</a>, enforces media types in 
+        <a href="#file-formats">File formats</a>, and maintains a valid <code>queries.ttl</code> as described in 
+        <a href="#container-index">The index</a>.
       </p>
-      <p class="todo">
-        TODO: Enumerate recommended extension predicates and registry policy (if
-        any).
+      <p>
+        A <em>QVMC Client</em> conforms if it manipulates members through LDP operations and creates/patches 
+        <code>queries.ttl</code> entries according to the data model.
       </p>
     </section>
 
     <section>
-      <p>
-        <strong>Interpretation:</strong> Each subject
-        <code>#&lt;id&gt;</code> is a cache entry that is a SPARQL
-        <code>SELECT</code> query and a <code>sh:SPARQLExecutable</code>.
-        Properties link to the canonical algebra (<code>.rq</code>) and the
-        serialized results (<code>.json</code>), the endpoint (as a list head to
-        allow multiple endpoints), and a creation timestamp.
-      </p>
+      <h2>Implementation guidance (non-normative)</h2>
+      <ul>
+        <li>Synchronize <code>queries.ttl</code> updates with results writes to avoid dangling references.</li>
+        <li>Use ETags and conditional requests (<code>If-Match</code>) to prevent lost updates.</li>
+        <li>Support both JSON and XML results to maximize interoperability.</li>
+        <li>Expose <code>ldp:contains</code> in RDF representations to help crawlers discover members.</li>
+      </ul>
     </section>
 
-
-    <section data-dfn-for="Foo">
-      <h2>Start your spec!</h2>
-      <pre class="idl">
-        [Exposed=Window]
-        interface Foo {
-        attribute DOMString bar;
-        undefined doTheFoo();
-        };
-      </pre>
-      <p>The <dfn>Foo</dfn> interface represents a {{Foo}}.</p>
-      <p>
-        The <dfn>doTheFoo()</dfn> method does the foo. Call it by running
-        {{Foo/doTheFoo()}}.
-      </p>
-      <ol class="algorithm">
-        <li>A |variable:DOMString| can be declared like this.</li>
-      </ol>
-    </section>
-    <section id="conformance">
-      <p>
-        This is required for specifications that contain normative material.
-      </p>
+    <section>
+      <h2>Change log (non-normative)</h2>
+      <ul>
+        <li>2025-09-25: Initial Editor's Draft.</li>
+      </ul>
     </section>
 
     <section id="references"></section>
