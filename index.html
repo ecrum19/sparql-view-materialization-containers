@@ -50,15 +50,15 @@
   <body>
     <section id="abstract">
       <p>
-        The execution of SPARQL queries, especially over large, federated sources, can be challenging for a number of reasons,
+        The execution of SPARQL queries can be challenging for a number of reasons
         including performance, availability, and reproducibility.
         To encourage greater reproducibility, sharability, and performance of these queries, a result caching approach offers a pragmatic solution.
 
         This specification defines <em>SPARQL Query View Materialization Containers</em> (QVMC): 
         HTTP resources that implement the Linked Data Platform (LDP) Container model to store SPARQL query definitions and their corresponding materialized result sets. 
         A QVMC is an <code>ldp:BasicContainer</code> whose members include SPARQL query source files 
-        (<code class="fname">*.rq</code>) and SPARQL Results documents (<code class="fname">*.srj</code> for JSON and <code class="fname">*.srx</code> for XML). 
-        An RDF index resource named <code class="fname">queries.ttl</code> describes the contained views and how they were generated.
+        and SPARQL Results documents. 
+        An RDF index resource describes the contained views and how they were generated.
         These guidelines enable clients and tools to reliably leverage cached SPARQL queries, their canonical
         algebra, provenance, and serialized results, in a way that promotes interoperability and reuse.
       </p>
